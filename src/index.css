@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Fonts already loaded in index.html ─────────────────────────────── */
+
+/* ─── Base resets ─────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0A0A0A;
+  color: #F8F4E8;
+  font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+}
+
+/* ─── RTL-aware scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1A1A1A;
+}
+::-webkit-scrollbar-thumb {
+  background: #FFD700;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FFE55C;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(255, 215, 0, 0.3);
+  color: #F8F4E8;
+}
+
+/* ─── Leaflet overrides ───────────────────────────────────────────────────── */
+.leaflet-container {
+  background: #1A1A1A !important;
+  font-family: 'Cairo', sans-serif !important;
+}
+
+.leaflet-tile {
+  filter: brightness(0.85) saturate(0.7) hue-rotate(180deg) invert(1);
+}
+
+/* Dark map tiles */
+.leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) saturate(0.8);
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 215, 0, 0.3) !important;
+  border-radius: 12px !important;
+  color: #F8F4E8 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-popup-tip {
+  background: #1A1A1A !important;
+}
+
+.leaflet-popup-close-button {
+  color: #FFD700 !important;
+  font-size: 18px !important;
+}
+
+/* ─── Custom utility classes ──────────────────────────────────────────────── */
+@layer utilities {
+  .font-arabic {
+    font-family: 'Cairo', 'Noto Kufi Arabic', sans-serif;
+  }
+
+  .font-latin {
+    font-family: 'Bebas Neue', 'Barlow Condensed', sans-serif;
+  }
+
+  .font-body {
+    font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
+  }
+
+  .text-gradient-yellow {
+    background: linear-gradient(135deg, #FFE55C 0%, #FFD700 40%, #E6A800 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-checker {
+    background-image: repeating-linear-gradient(
+      90deg,
+      #FFD700 0px,
+      #FFD700 16px,
+      #0A0A0A 16px,
+      #0A0A0A 32px
+    );
+  }
+
+  .hover\:scale-102:hover {
+    transform: scale(1.02);
+  }
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+@keyframes slide-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulse-yellow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255,215,0,0.3);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(255,215,0,0.8), 0 0 100px rgba(255,215,0,0.3);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50%       { transform: translateY(-10px) rotate(2deg); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out both;
+}
+
+.animate-pulse-yellow {
+  animation: pulse-yellow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ─── PWA safe-area padding ───────────────────────────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ─── Focus ring override ─────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #FFD700;
+  outline-offset: 2px;
+  border-radius: 4px;
+}

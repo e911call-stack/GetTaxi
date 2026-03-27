@@ -1,0 +1,24 @@
+{
+  "name": "YellowWant.jo — تاكسي عمّان",
+  "short_name": "يلو وانت",
+  "description": "اطلب تاكسي أصفر في عمّان بضغطة واحدة",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#FFD700",
+  "lang": "ar",
+  "dir": "rtl",
+  "orientation": "portrait",
+  "categories": ["transportation", "lifestyle"],
+  "icons": [
+    {
+      "src": "/taxi-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
