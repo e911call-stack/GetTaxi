@@ -8,6 +8,7 @@ import { AuthPage } from '@/pages/AuthPage'
 import { PassengerPage } from '@/pages/PassengerPage'
 import { DriverPage } from '@/pages/DriverPage'
 import { AdminPage } from '@/pages/AdminPage'
+import type { UserRole } from '@/types'
 import '@/i18n'
 
 function AuthListener() {
@@ -18,11 +19,13 @@ function AuthListener() {
     // Check if there's already an active session on first load
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const role = session.user.app_metadata?.role ?? 'passenger'
+        const role = (session.user.app_metadata?.role ?? 'passenger') as UserRole
         setProfile({
           id: session.user.id,
-          email: session.user.email ?? '',
           role,
+          display_name: null,
+          phone: null,
+          created_at: new Date().toISOString(),
         })
         redirectByRole(role)
       }
@@ -32,11 +35,13 @@ function AuthListener() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (session?.user) {
-          const role = session.user.app_metadata?.role ?? 'passenger'
+          const role = (session.user.app_metadata?.role ?? 'passenger') as UserRole
           setProfile({
             id: session.user.id,
-            email: session.user.email ?? '',
             role,
+            display_name: null,
+            phone: null,
+            created_at: new Date().toISOString(),
           })
           redirectByRole(role)
         } else {
