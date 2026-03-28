@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useAppStore } from '@/lib/store'
 import toast from 'react-hot-toast'
@@ -7,7 +6,6 @@ import toast from 'react-hot-toast'
 type Step = 'email' | 'sent'
 
 export function AuthPage() {
-  const { t } = useTranslation()
   const { language } = useAppStore()
   const isRTL = language === 'ar'
 
