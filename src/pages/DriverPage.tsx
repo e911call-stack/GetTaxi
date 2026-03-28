@@ -1,10 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { supabase, updateTaxiLocation } from '@/lib/supabase'
 import { useAppStore } from '@/lib/store'
-import type { RideRequest } from '@/types'
+import type { RideRequest, RequestStatus } from '@/types'
 import toast from 'react-hot-toast'
 import { AMMAN_CENTER } from '@/types'
 
@@ -31,7 +30,7 @@ const S: Record<string, React.CSSProperties> = {
   driverControl: { position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30, padding: '0 16px 20px' },
   driverPanel: { background: '#111118', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 24, padding: 16 },
   toggleWrap: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 100, padding: 4, display: 'flex', alignItems: 'center', gap: 4 },
-  toggleOpt: { flex: 1, padding: '8px 16px', borderRadius: 100, fontFamily: "'Cairo',sans-serif", fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.25s', color: '#6b6b80', background: 'transparent' },
+  toggleOpt: { flex: 1, padding: '8px 16px', borderRadius: 100, fontFamily: "'Cairo',sans-serif", fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', color: '#6b6b80', background: 'transparent' },
   requestModal: { position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 80, background: '#111118', borderRadius: '28px 28px 0 0', borderTop: '1px solid rgba(255,255,255,0.07)', padding: '20px 20px 28px', transition: 'transform 0.38s cubic-bezier(0.16,1,0.3,1)' },
   routeBlock: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 14, marginBottom: 14 },
   routeStop: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 },
@@ -44,7 +43,6 @@ const S: Record<string, React.CSSProperties> = {
 }
 
 export function DriverPage() {
-  const { t } = useTranslation()
   const { myTaxi, language } = useAppStore()
   const isRTL = language === 'ar'
 
@@ -166,6 +164,16 @@ export function DriverPage() {
     toast(isRTL ? 'تم تسجيل عدم حضور الراكب' : 'No-show reported')
   }
 
+  const statusLabel: Record<RequestStatus, string> = {
+    accepted: isRTL ? 'متجه للراكب' : 'Heading to passenger',
+    driver_arrived: isRTL ? 'وصلت' : 'Arrived',
+    in_progress: isRTL ? 'الرحلة جارية' : 'In progress',
+    pending: isRTL ? 'انتظار قبول' : 'Pending',
+    completed: isRTL ? 'مكتملة' : 'Completed',
+    cancelled: isRTL ? 'ملغاة' : 'Cancelled',
+    no_show: isRTL ? 'لم يحضر الراكب' : 'No-show',
+  }
+
   const timerOffset = circumference * (1 - timerSec / 20)
 
   return (
@@ -213,9 +221,7 @@ export function DriverPage() {
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(245,197,24,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>{isRTL ? 'راكب مجهول' : 'Anonymous Passenger'}</div>
-                  <div style={{ fontSize: 11, color: '#6b6b80', marginTop: 2 }}>
-                    {{ accepted: isRTL ? 'متجه للراكب' : 'Heading to passenger', driver_arrived: isRTL ? 'وصلت' : 'Arrived', in_progress: isRTL ? 'الرحلة جارية' : 'In progress' }[activeRequest.status] || activeRequest.status}
-                  </div>
+                  <div style={{ fontSize: 11, color: '#6b6b80', marginTop: 2 }}>{statusLabel[activeRequest.status]}</div>
                 </div>
               </div>
               {activeRequest.status === 'accepted' && (
@@ -236,8 +242,12 @@ export function DriverPage() {
           <div style={S.driverPanel}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 900 }}>{isRTL ? `مرحباً، ${myTaxi?.driver_name || 'سائق'} 👋` : `Hi, ${myTaxi?.driver_name || 'Driver'} 👋`}</div>
-                <div style={{ fontSize: 11, color: '#6b6b80', marginTop: 2 }}>{myTaxi ? `${myTaxi.car_make_model} · ${myTaxi.plate}` : (isRTL ? 'لا يوجد تاكسي مسجل' : 'No taxi registered')}</div>
+                <div style={{ fontSize: 16, fontWeight: 900 }}>
+                  {isRTL ? `مرحباً، ${myTaxi?.driver_name || 'سائق'} 👋` : `Hi, ${myTaxi?.driver_name || 'Driver'} 👋`}
+                </div>
+                <div style={{ fontSize: 11, color: '#6b6b80', marginTop: 2 }}>
+                  {myTaxi ? `${myTaxi.car_make_model} · ${myTaxi.plate}` : (isRTL ? 'لا يوجد تاكسي مسجل' : 'No taxi registered')}
+                </div>
               </div>
               <div style={{ textAlign: isRTL ? 'left' : 'right' }}>
                 <div style={{ fontSize: 10, color: '#6b6b80' }}>{isRTL ? 'الأرباح' : 'Earnings'}</div>
@@ -281,12 +291,13 @@ export function DriverPage() {
             <svg viewBox="0 0 50 50" width="56" height="56" style={{ transform: 'rotate(-90deg)' }}>
               <circle cx="25" cy="25" r="22" fill="none" stroke="rgba(255,71,87,0.15)" strokeWidth="4" />
               <circle cx="25" cy="25" r="22" fill="none" stroke="#ff4757" strokeWidth="4" strokeLinecap="round"
-                strokeDasharray={circumference} strokeDashoffset={timerOffset} style={{ transition: 'stroke-dashoffset 1s linear' }} />
+                strokeDasharray={circumference} strokeDashoffset={timerOffset}
+                style={{ transition: 'stroke-dashoffset 1s linear' }} />
             </svg>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#ff4757' }}>{timerSec}</div>
           </div>
           <div style={{ flex: 1, fontSize: 12, color: '#6b6b80' }}>
-            {isRTL ? 'يُلغى الطلب تلقائياً إذا لم يُقبل' : 'Request cancels automatically if not accepted'}<br />
+            {isRTL ? 'يُلغى الطلب تلقائياً إذا لم يُقبل' : 'Request auto-cancels if not accepted'}<br />
             <span style={{ color: '#ff4757', fontWeight: 700 }}>{isRTL ? 'في غضون 20 ثانية' : 'within 20 seconds'}</span>
           </div>
         </div>
@@ -297,7 +308,9 @@ export function DriverPage() {
             <div>
               <div style={{ fontSize: 12, color: '#6b6b80' }}>{isRTL ? 'الانطلاق' : 'Pickup'}</div>
               <div style={{ fontWeight: 700, fontSize: 13 }}>
-                {incomingRequest ? `${incomingRequest.pickup_lat.toFixed(4)}, ${incomingRequest.pickup_lng.toFixed(4)}` : (isRTL ? 'شارع الرشيد، وسط البلد' : 'Rashid St, Downtown')}
+                {incomingRequest
+                  ? `${incomingRequest.pickup_lat.toFixed(4)}, ${incomingRequest.pickup_lng.toFixed(4)}`
+                  : (isRTL ? 'شارع الرشيد، وسط البلد' : 'Rashid St, Downtown')}
               </div>
             </div>
           </div>
@@ -305,7 +318,9 @@ export function DriverPage() {
             <div style={{ ...S.routeDot, background: '#ff4757' }} />
             <div>
               <div style={{ fontSize: 12, color: '#6b6b80' }}>{isRTL ? 'الوصول' : 'Dropoff'}</div>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>{incomingRequest?.pickup_address || (isRTL ? 'الوجهة...' : 'Destination...')}</div>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>
+                {incomingRequest?.pickup_address || (isRTL ? 'الوجهة...' : 'Destination...')}
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
