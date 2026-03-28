@@ -12,6 +12,14 @@ interface AdminStats {
   total_drivers: number
 }
 
+// ── Style helpers (functions kept separate, not in S object) ──────────────────
+function trackStyle(on: boolean): React.CSSProperties {
+  return { position: 'absolute', inset: 0, background: on ? '#1dcd9f' : 'rgba(255,255,255,0.1)', borderRadius: 100, cursor: 'pointer', transition: '0.3s' }
+}
+function thumbStyle(on: boolean): React.CSSProperties {
+  return { position: 'absolute', width: 20, height: 20, left: on ? 23 : 3, bottom: 3, background: '#fff', borderRadius: '50%', transition: '0.3s' }
+}
+
 const S: Record<string, React.CSSProperties> = {
   root: { minHeight: '100vh', background: '#08080f', color: '#f0f0f5', fontFamily: "'Cairo', sans-serif", overflowX: 'hidden' },
   adminHead: { background: 'linear-gradient(180deg,#111120 0%,#08080f 100%)', padding: '20px 20px 28px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
@@ -21,7 +29,7 @@ const S: Record<string, React.CSSProperties> = {
   kpi: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 14 },
   section: { padding: '20px 20px 0' },
   sectionTitle: { fontSize: 13, fontWeight: 700, color: '#6b6b80', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 },
-  sectionBar: { display: 'block', width: 3, height: 14, background: '#f5c518', borderRadius: 2 },
+  sectionBar: { display: 'block', width: 3, height: 14, background: '#f5c518', borderRadius: 2, flexShrink: 0 },
   adminCard: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 16, marginBottom: 12 },
   broadcastCard: { background: 'rgba(255,71,87,0.06)', border: '1px solid rgba(255,71,87,0.2)', borderRadius: 20, padding: 18, marginBottom: 16 },
   textarea: { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 14px', color: '#f0f0f5', fontFamily: "'Cairo',sans-serif", fontSize: 14, outline: 'none', resize: 'none' as const, minHeight: 72 },
@@ -32,9 +40,6 @@ const S: Record<string, React.CSSProperties> = {
   avatar: { width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#f5c518,#c9a012)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#000', flexShrink: 0 },
   reqBtn: { width: 34, height: 34, borderRadius: 10, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 },
   sysRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  switchLabel: { position: 'relative' as const, width: 46, height: 26, display: 'inline-block' },
-  switchTrack: (on: boolean): React.CSSProperties => ({ position: 'absolute', inset: 0, background: on ? '#1dcd9f' : 'rgba(255,255,255,0.1)', borderRadius: 100, cursor: 'pointer', transition: '0.3s' }),
-  switchThumb: (on: boolean): React.CSSProperties => ({ position: 'absolute', width: 20, height: 20, left: on ? 23 : 3, bottom: 3, background: '#fff', borderRadius: '50%', transition: '0.3s' }),
   btnSm: { background: 'rgba(255,71,87,0.15)', border: '1px solid rgba(255,71,87,0.25)', color: '#ff4757', borderRadius: 8, padding: '6px 12px', fontFamily: "'Cairo',sans-serif", fontSize: 11, fontWeight: 700, cursor: 'pointer' },
   btnVerify: { padding: '4px 12px', borderRadius: 100, background: '#f5c518', border: 'none', color: '#000', fontSize: 11, fontFamily: "'Cairo',sans-serif", fontWeight: 700, cursor: 'pointer' },
   btnSuspend: { padding: '4px 12px', borderRadius: 100, background: 'transparent', border: '1px solid rgba(255,71,87,0.4)', color: '#ff4757', fontSize: 11, fontFamily: "'Cairo',sans-serif", cursor: 'pointer' },
@@ -43,9 +48,19 @@ const S: Record<string, React.CSSProperties> = {
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div style={{ position: 'relative', width: 46, height: 26, cursor: 'pointer' }} onClick={() => onChange(!on)}>
-      <div style={S.switchTrack(on)} />
-      <div style={S.switchThumb(on)} />
+    <div style={{ position: 'relative', width: 46, height: 26, cursor: 'pointer', flexShrink: 0 }} onClick={() => onChange(!on)}>
+      <div style={trackStyle(on)} />
+      <div style={thumbStyle(on)} />
+    </div>
+  )
+}
+
+function AdSlotToggle({ label }: { label: string }) {
+  const [on, setOn] = useState(true)
+  return (
+    <div style={S.sysRow}>
+      <div style={{ fontSize: 13, fontWeight: 700 }}>{label}</div>
+      <Toggle on={on} onChange={setOn} />
     </div>
   )
 }
@@ -93,13 +108,13 @@ export function AdminPage() {
 
   const verifyDriver = async (id: string, verified: boolean) => {
     await supabase.from('taxis').update({ verified }).eq('id', id)
-    setTaxis((prev) => prev.map((t) => (t.id === id ? { ...t, verified } : t)))
+    setTaxis((prev) => prev.map((tx) => (tx.id === id ? { ...tx, verified } : tx)))
     showToast(verified ? (isRTL ? '✅ تم التوثيق' : '✅ Verified') : (isRTL ? 'تم إلغاء التوثيق' : 'Verification removed'))
   }
 
   const toggleOnline = async (id: string, current: boolean) => {
     await supabase.from('taxis').update({ is_online: !current }).eq('id', id)
-    setTaxis((prev) => prev.map((t) => (t.id === id ? { ...t, is_online: !current } : t)))
+    setTaxis((prev) => prev.map((tx) => (tx.id === id ? { ...tx, is_online: !current } : tx)))
   }
 
   const sendBroadcast = () => {
@@ -186,9 +201,9 @@ export function AdminPage() {
               placeholder={isRTL ? 'اكتب رسالة التنبيه هنا...' : 'Write your alert message here...'}
             />
             <div style={{ display: 'flex', gap: 8, margin: '12px 0' }}>
-              {(['all', 'driver', 'passenger'] as const).map((t_) => (
-                <button key={t_} style={broadcastTarget === t_ ? S.targetPillSel : S.targetPill} onClick={() => setBroadcastTarget(t_)}>
-                  {t_ === 'all' ? (isRTL ? 'الجميع' : 'All') : t_ === 'driver' ? (isRTL ? 'السائقون' : 'Drivers') : (isRTL ? 'الركاب' : 'Passengers')}
+              {(['all', 'driver', 'passenger'] as const).map((tgt) => (
+                <button key={tgt} style={broadcastTarget === tgt ? S.targetPillSel : S.targetPill} onClick={() => setBroadcastTarget(tgt)}>
+                  {tgt === 'all' ? (isRTL ? 'الجميع' : 'All') : tgt === 'driver' ? (isRTL ? 'السائقون' : 'Drivers') : (isRTL ? 'الركاب' : 'Passengers')}
                 </button>
               ))}
             </div>
@@ -233,9 +248,9 @@ export function AdminPage() {
         <div style={{ ...S.section, paddingTop: 20 }}>
           <div style={S.sectionTitle}><span style={S.sectionBar} />{isRTL ? 'إدارة السائقين' : 'Driver Management'}</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {(['drivers', 'requests'] as const).map((t_) => (
-              <button key={t_} onClick={() => setTab(t_)} style={{ padding: '6px 16px', borderRadius: 100, fontFamily: "'Cairo',sans-serif", fontSize: 13, cursor: 'pointer', border: 'none', background: tab === t_ ? '#f5c518' : 'rgba(255,255,255,0.05)', color: tab === t_ ? '#000' : '#6b6b80', fontWeight: tab === t_ ? 700 : 400 }}>
-                {t_ === 'drivers' ? (isRTL ? 'السائقون' : 'Drivers') : (isRTL ? 'الطلبات' : 'Requests')}
+            {(['drivers', 'requests'] as const).map((tKey) => (
+              <button key={tKey} onClick={() => setTab(tKey)} style={{ padding: '6px 16px', borderRadius: 100, fontFamily: "'Cairo',sans-serif", fontSize: 13, cursor: 'pointer', border: 'none', background: tab === tKey ? '#f5c518' : 'rgba(255,255,255,0.05)', color: tab === tKey ? '#000' : '#6b6b80', fontWeight: tab === tKey ? 700 : 400 }}>
+                {tKey === 'drivers' ? (isRTL ? 'السائقون' : 'Drivers') : (isRTL ? 'الطلبات' : 'Requests')}
               </button>
             ))}
           </div>
@@ -275,20 +290,11 @@ export function AdminPage() {
         <div style={{ ...S.section, paddingTop: 20 }}>
           <div style={S.sectionTitle}><span style={S.sectionBar} />{isRTL ? 'المساحات الإعلانية' : 'Ad Slots'}</div>
           <div style={{ ...S.adminCard, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {[
-              { label: isRTL ? 'بانر الراكب' : 'Passenger Banner' },
-              { label: isRTL ? 'بانر السائق' : 'Driver Banner' },
-            ].map((ad, i) => {
-              const [adOn, setAdOn] = useState(true)
-              return (
-                <div key={i} style={S.sysRow}>
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>{ad.label}</div>
-                  <Toggle on={adOn} onChange={setAdOn} />
-                </div>
-              )
-            })}
+            <AdSlotToggle label={isRTL ? 'بانر الراكب' : 'Passenger Banner'} />
+            <AdSlotToggle label={isRTL ? 'بانر السائق' : 'Driver Banner'} />
           </div>
         </div>
+
       </div>
     </div>
   )
