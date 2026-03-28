@@ -4,49 +4,35 @@ import { supabase } from '@/lib/supabase'
 import { useAppStore } from '@/lib/store'
 import toast from 'react-hot-toast'
 
-type Step = 'phone' | 'otp'
+type Step = 'email' | 'sent'
 
 export function AuthPage() {
   const { t } = useTranslation()
   const { language } = useAppStore()
   const isRTL = language === 'ar'
 
-  const [step, setStep] = useState<Step>('phone')
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
+  const [step, setStep] = useState<Step>('email')
+  const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const sendOtp = async () => {
-    if (!phone) return
-    setLoading(true)
-    try {
-      const formatted = phone.startsWith('+') ? phone : `+962${phone.replace(/^0/, '')}`
-      const { error } = await supabase.auth.signInWithOtp({ phone: formatted })
-      if (error) throw error
-      setStep('otp')
-      toast.success(isRTL ? 'تم إرسال الرمز' : 'Code sent!')
-    } catch {
-      toast.error(t('generic_error'))
-    } finally {
-      setLoading(false)
+  const sendMagicLink = async () => {
+    if (!email || !email.includes('@')) {
+      toast.error(isRTL ? 'أدخل بريدًا إلكترونيًا صحيحًا' : 'Enter a valid email')
+      return
     }
-  }
-
-  const verifyOtp = async () => {
-    if (!otp) return
     setLoading(true)
     try {
-      const formatted = phone.startsWith('+') ? phone : `+962${phone.replace(/^0/, '')}`
-      const { error } = await supabase.auth.verifyOtp({
-        phone: formatted,
-        token: otp,
-        type: 'sms',
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
       })
       if (error) throw error
-      toast.success(isRTL ? 'تم تسجيل الدخول!' : 'Logged in!')
-      window.location.href = '/'
+      setStep('sent')
+      toast.success(isRTL ? 'تم إرسال الرابط!' : 'Link sent!')
     } catch {
-      toast.error(t('generic_error'))
+      toast.error(isRTL ? 'حدث خطأ، حاول مجددًا' : 'Something went wrong, try again')
     } finally {
       setLoading(false)
     }
@@ -61,68 +47,82 @@ export function AuthPage() {
         {/* Logo */}
         <div className="text-center mb-10">
           <div className="text-6xl mb-4">🚕</div>
-          <h1 className="font-arabic text-taxi-yellow text-3xl font-bold">{t('app_name')}</h1>
-          <p className="font-body text-taxi-gray-light text-sm mt-1">{t('amman_only')}</p>
+          <h1 className="font-arabic text-taxi-yellow text-3xl font-bold">
+            {isRTL ? 'يلو وانت' : 'YellowWant'}
+          </h1>
+          <p className="font-body text-taxi-gray-light text-sm mt-1">
+            {isRTL ? 'عمّان، الأردن' : 'Amman, Jordan'}
+          </p>
         </div>
 
         {/* Card */}
         <div className="bg-taxi-black-soft rounded-3xl border border-taxi-yellow/20 p-8">
-          {step === 'phone' ? (
+
+          {step === 'email' ? (
             <>
               <label className="block font-arabic text-taxi-yellow text-lg font-semibold mb-4">
-                {t('phone_number')}
+                {isRTL ? 'البريد الإلكتروني' : 'Email Address'}
               </label>
-              <div className="flex gap-2 mb-6">
-                <div className="flex items-center px-3 rounded-xl bg-taxi-black-mid border border-taxi-yellow/20 text-taxi-gray-light font-body text-sm whitespace-nowrap">
-                  🇯🇴 +962
-                </div>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="7xxxxxxxx"
-                  className="flex-1 bg-taxi-black-mid border border-taxi-yellow/20 rounded-xl px-4 py-3 text-taxi-white-pure font-body focus:outline-none focus:border-taxi-yellow transition-colors"
-                  onKeyDown={(e) => e.key === 'Enter' && sendOtp()}
-                />
-              </div>
+              <p className="font-body text-taxi-gray-light text-sm mb-5">
+                {isRTL
+                  ? 'سنرسل لك رابطًا سريعًا لتسجيل الدخول — بدون كلمة مرور'
+                  : 'We\'ll send you a quick login link — no password needed'}
+              </p>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={isRTL ? 'example@gmail.com' : 'example@gmail.com'}
+                className="w-full bg-taxi-black-mid border border-taxi-yellow/20 rounded-xl px-4 py-3 text-taxi-white-pure font-body focus:outline-none focus:border-taxi-yellow transition-colors mb-6 text-left"
+                dir="ltr"
+                onKeyDown={(e) => e.key === 'Enter' && sendMagicLink()}
+              />
               <button
-                onClick={sendOtp}
-                disabled={loading || !phone}
+                onClick={sendMagicLink}
+                disabled={loading || !email}
                 className="w-full py-4 rounded-2xl bg-taxi-yellow text-taxi-black font-arabic text-xl font-bold disabled:opacity-50 hover:bg-taxi-yellow-glow transition-colors active:scale-95"
               >
-                {loading ? '...' : t('continue')}
+                {loading
+                  ? (isRTL ? 'جاري الإرسال...' : 'Sending...')
+                  : (isRTL ? 'أرسل الرابط' : 'Send Link')}
               </button>
             </>
           ) : (
-            <>
-              <label className="block font-arabic text-taxi-yellow text-lg font-semibold mb-4">
-                {t('enter_otp')}
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                className="w-full bg-taxi-black-mid border border-taxi-yellow/20 rounded-xl px-4 py-4 text-taxi-white-pure text-center text-3xl tracking-[0.5em] font-body focus:outline-none focus:border-taxi-yellow mb-6"
-                onKeyDown={(e) => e.key === 'Enter' && verifyOtp()}
-              />
+            <div className="text-center py-4">
+              <div className="text-5xl mb-4">📧</div>
+              <h2 className="font-arabic text-taxi-yellow text-2xl font-bold mb-3">
+                {isRTL ? 'تحقق من بريدك!' : 'Check your email!'}
+              </h2>
+              <p className="font-body text-taxi-gray-light text-sm leading-relaxed mb-6">
+                {isRTL
+                  ? `أرسلنا رابط تسجيل الدخول إلى ${email} — افتح الرابط وستدخل تلقائيًا`
+                  : `We sent a login link to ${email} — open it and you'll be signed in automatically`}
+              </p>
+              <div className="bg-taxi-black-mid rounded-2xl p-4 mb-6 border border-taxi-yellow/10">
+                <p className="font-body text-taxi-gray-light text-xs">
+                  {isRTL
+                    ? '💡 تحقق من مجلد الرسائل غير المرغوبة (Spam) إذا لم يصلك'
+                    : '💡 Check your spam/junk folder if you don\'t see it'}
+                </p>
+              </div>
               <button
-                onClick={verifyOtp}
-                disabled={loading || otp.length < 4}
-                className="w-full py-4 rounded-2xl bg-taxi-yellow text-taxi-black font-arabic text-xl font-bold disabled:opacity-50 hover:bg-taxi-yellow-glow transition-colors active:scale-95 mb-3"
-              >
-                {loading ? '...' : t('verify')}
-              </button>
-              <button
-                onClick={() => setStep('phone')}
+                onClick={() => { setStep('email'); setEmail('') }}
                 className="w-full py-3 rounded-2xl border border-taxi-yellow/20 text-taxi-gray-light font-body text-sm hover:border-taxi-yellow/40 transition-colors"
               >
-                {t('back')}
+                {isRTL ? 'استخدام بريد آخر' : 'Use a different email'}
               </button>
-            </>
+            </div>
           )}
+        </div>
+
+        {/* Back to home */}
+        <div className="text-center mt-6">
+          <a
+            href="/"
+            className="font-body text-taxi-gray-light text-sm hover:text-taxi-yellow transition-colors"
+          >
+            {isRTL ? '← العودة للرئيسية' : '← Back to home'}
+          </a>
         </div>
       </div>
     </div>
