@@ -1,13 +1,63 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAppStore } from '@/lib/store'
+import { supabase } from '@/lib/supabase'
 import { LandingPage } from '@/pages/LandingPage'
 import { AuthPage } from '@/pages/AuthPage'
 import { PassengerPage } from '@/pages/PassengerPage'
 import { DriverPage } from '@/pages/DriverPage'
 import { AdminPage } from '@/pages/AdminPage'
 import '@/i18n'
+
+function AuthListener() {
+  const { setProfile } = useAppStore()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Check if there's already an active session on first load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const role = session.user.app_metadata?.role ?? 'passenger'
+        setProfile({
+          id: session.user.id,
+          email: session.user.email ?? '',
+          role,
+        })
+        redirectByRole(role)
+      }
+    })
+
+    // Listen for auth changes (magic link click, sign out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session?.user) {
+          const role = session.user.app_metadata?.role ?? 'passenger'
+          setProfile({
+            id: session.user.id,
+            email: session.user.email ?? '',
+            role,
+          })
+          redirectByRole(role)
+        } else {
+          // Signed out
+          setProfile(null)
+          navigate('/')
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  function redirectByRole(role: string) {
+    if (role === 'admin') navigate('/admin', { replace: true })
+    else if (role === 'driver') navigate('/driver', { replace: true })
+    else navigate('/request', { replace: true })
+  }
+
+  return null
+}
 
 function App() {
   const { language } = useAppStore()
@@ -20,6 +70,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <AuthListener />
       <Toaster
         position="top-center"
         toastOptions={{
